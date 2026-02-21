@@ -1,338 +1,264 @@
-/* CET Audit Overlay v1 (safe mount: never clears page)
-   Creationist Entanglement Theory (CET) — Structural Performance Intelligence
-*/
+/* =========================
+   CET AUDIT (Public) v1.0
+   Creationist Entanglement Theory (CET)
+   Structural Performance Intelligence
+   ========================= */
 (() => {
-  const DAY = () => new Date().toISOString().slice(0, 10);
-  const KEY = "cet_free_run_day_v1";
-  const usedToday = () => localStorage.getItem(KEY) === DAY();
-  const markUsed = () => localStorage.setItem(KEY, DAY());
+  if (window.__CET_AUDIT_LOADED__) return;
+  window.__CET_AUDIT_LOADED__ = true;
 
-  const clamp = (n, a=0, b=100) => Math.max(a, Math.min(b, n));
+  const VERSION = "1.0.0";
+  const PAY_URL = "https://example.com/upgrade"; // <-- replace later (Stripe/PayPal link)
+  const DAY = new Date().toISOString().slice(0, 10);
+  const KEY = "cet_free_run_" + DAY;
+
+  const usedToday = () => localStorage.getItem(KEY) === "1";
+  const markUsed = () => localStorage.setItem(KEY, "1");
+
+  const clamp = (n, a = 0, b = 100) => Math.max(a, Math.min(b, n));
   const num = (v) => {
-    const n = Number(String(v).replace(/[^0-9.]/g, ""));
-    return Number.isFinite(n) ? n : 0;
+    if (!v) return null;
+    const s = String(v).toLowerCase().replace(/,/g, "").trim();
+    const m = s.match(/(-?\d+(\.\d+)?)/);
+    if (!m) return null;
+    let x = parseFloat(m[1]);
+    if (s.includes("k")) x *= 1000;
+    if (s.includes("m")) x *= 1000000;
+    return Number.isFinite(x) ? x : null;
   };
 
-  // Parse either structured key=val pairs or plain text with numbers.
-  function parseInput(raw) {
-    const text = (raw || "").trim();
-    const kv = {};
-    text.split(/[\n,]+/).forEach(part => {
-      const m = part.match(/^\s*([a-zA-Z_ -]+)\s*[:=]\s*([^\n]+)\s*$/);
-      if (m) kv[m[1].trim().toLowerCase()] = m[2].trim();
-    });
+  // --- Parse friendly “stats” from plain text ---
+  function parseMetrics(raw) {
+    const t = (raw || "").toLowerCase();
 
-    // Friendly aliases
-    const platform = (kv.platform || kv.network || "").toLowerCase() || "";
-    const views = num(kv.views || kv.impressions || kv.reach || kv.plays);
-    const engagements = num(kv.engagements || kv.likes || 0) + num(kv.comments || 0) + num(kv.shares || 0) + num(kv.saves || 0);
-    const followers = num(kv.followers || kv.subscribers || kv.audience);
-    const postsPerWeek = num(kv["posts/week"] || kv.posts || kv.frequency);
-    const revenue = num(kv.revenue || kv.sales || kv.mrr);
+    const platform =
+      (t.match(/platform\s*:\s*([a-z0-9 _-]+)/)?.[1] || "").trim() || null;
 
-    // If no kv, try to infer common metrics from text numbers (best-effort)
-    const numbers = (text.match(/[0-9][0-9,]*\.?[0-9]*/g) || []).map(s => num(s));
-    const guessViews = views || (numbers[0] || 0);
-    const guessFollowers = followers || (numbers[1] || 0);
+    const views =
+      num(t.match(/(views|impressions)\s*:\s*([0-9.,]+[km]?)/)?.[2]) ??
+      num(t.match(/([0-9.,]+[km]?)\s*(views|impressions)/)?.[1]);
+
+    const followers =
+      num(t.match(/followers\s*:\s*([0-9.,]+[km]?)/)?.[1]) ??
+      num(t.match(/([0-9.,]+[km]?)\s*followers/ )?.[1]);
+
+    const engagement =
+      num(t.match(/engagement(\s*rate)?\s*:\s*([0-9.]+)\s*%/)?.[2]); // percent
+
+    const growth =
+      num(t.match(/growth\s*:\s*([0-9.]+)\s*%/)?.[1]); // percent per month, if user states it
+
+    const postsPerWeek =
+      num(t.match(/posts?\s*\/\s*week\s*:\s*([0-9.]+)/)?.[1]) ??
+      num(t.match(/posting\s*:\s*([0-9.]+)\s*\/\s*wk/)?.[1]);
+
+    const budget =
+      num(t.match(/budget\s*:\s*\$?\s*([0-9.,]+[km]?)/)?.[1]);
+
+    const team =
+      num(t.match(/team\s*:\s*([0-9]+)/)?.[1]) ??
+      (t.includes("solo") ? 1 : null);
+
+    const goal =
+      (t.match(/goal\s*:\s*([^\n]+)/)?.[1] || "").trim() || null;
+
+    const collabs =
+      num(t.match(/collabs?\s*:\s*([0-9]+)/)?.[1]) ??
+      (t.includes("collab") || t.includes("partnership") ? 1 : 0);
+
+    const conversions =
+      num(t.match(/conversions?\s*:\s*([0-9.,]+[km]?)/)?.[1]);
 
     return {
-      platform: platform || "unspecified",
-      timeframe: (kv.timeframe || kv.period || "last 30 days").toLowerCase(),
-      views: guessViews,
-      engagements,
-      followers: guessFollowers,
-      postsPerWeek,
-      revenue,
-      notes: kv.notes || kv.context || ""
+      platform,
+      views_monthly: views,
+      followers,
+      engagement_rate_pct: engagement,
+      growth_rate_pct: growth,
+      posts_per_week: postsPerWeek,
+      budget_monthly_usd: budget,
+      team_size: team,
+      collabs_recent: collabs,
+      conversions_monthly: conversions,
+      goal,
+      raw_length: (raw || "").length
     };
   }
 
-  // CET variables (first 5 "official" audit variables) — scored 0–100
-  function scoreCET(m) {
-    // Coherence: consistent signals & ratio sanity
-    const er = m.views ? (m.engagements / m.views) : 0; // engagement rate
-    const coherence = clamp(
-      (m.followers ? 25 : 0) +
-      (m.views ? 25 : 0) +
-      (m.engagements ? 25 : 0) +
-      (er > 0 && er < 0.2 ? 25 : er >= 0.2 ? 15 : 5)
-    );
+  // --- Convert metrics -> the 5 CET system variables (0–100) ---
+  function computeVariables(m) {
+    // Coherence = clarity + consistency signals
+    const coherence =
+      clamp(
+        (m.goal ? 20 : 0) +
+        (m.platform ? 10 : 0) +
+        (m.posts_per_week != null ? clamp(m.posts_per_week * 10, 0, 40) : 0) +
+        (m.raw_length > 60 ? 15 : 0) +
+        (m.raw_length > 140 ? 15 : 0)
+      );
 
-    // Constraint: bottlenecks / low capacity (low posting cadence or low resources proxy)
-    const constraint = clamp(
-      60 - clamp(m.postsPerWeek * 10, 0, 50) + (m.revenue > 0 ? -10 : 10)
-    );
+    // Constraint = pressure from low resources + “small team” (not bad, just reality)
+    const constraint =
+      clamp(
+        (m.team_size != null ? clamp((6 - m.team_size) * 12, 0, 48) : 18) +
+        (m.budget_monthly_usd != null ? clamp((1500 - m.budget_monthly_usd) / 30, 0, 40) : 12) +
+        (m.views_monthly != null && m.views_monthly < 20000 ? 18 : 0)
+      );
 
-    // Adaptability: iteration frequency proxy (posts/week) + engagement responsiveness proxy
-    const adaptability = clamp(
-      clamp(m.postsPerWeek * 12, 0, 70) + clamp(er * 200, 0, 30)
-    );
+    // Adaptability = iteration capacity + experimentation signals
+    const adaptability =
+      clamp(
+        (m.posts_per_week != null ? clamp(m.posts_per_week * 8, 0, 40) : 10) +
+        (m.growth_rate_pct != null ? clamp(m.growth_rate_pct * 3, 0, 30) : 0) +
+        ((m.raw_length > 140) ? 15 : 5) +
+        (m.platform ? 10 : 0)
+      );
 
-    // Entanglement: platform + audience leverage proxy (followers + views mix)
-    const entanglement = clamp(
-      clamp(Math.log10(m.followers + 1) * 18, 0, 60) + clamp(Math.log10(m.views + 1) * 12, 0, 40)
-    );
+    // Entanglement = network effects (collabs, partnerships, conversion touchpoints)
+    const entanglement =
+      clamp(
+        (m.collabs_recent != null ? clamp(m.collabs_recent * 12, 0, 48) : 0) +
+        (m.conversions_monthly != null ? 20 : 0) +
+        (m.platform ? 10 : 0) +
+        (m.followers != null && m.followers > 10000 ? 12 : 0) +
+        (m.followers != null && m.followers > 50000 ? 10 : 0)
+      );
 
-    // Emergence: growth potential proxy (views relative to followers + revenue presence)
-    const vf = m.followers ? (m.views / m.followers) : 0;
-    const emergence = clamp(
-      clamp(vf * 25, 0, 70) + (m.revenue > 0 ? 20 : 10)
-    );
+    // Emergence = growth + scale signals (views, followers, engagement)
+    const emergence =
+      clamp(
+        (m.views_monthly != null ? clamp(Math.log10(Math.max(1, m.views_monthly)) * 18, 0, 45) : 10) +
+        (m.followers != null ? clamp(Math.log10(Math.max(1, m.followers)) * 14, 0, 35) : 8) +
+        (m.engagement_rate_pct != null ? clamp(m.engagement_rate_pct * 3, 0, 30) : 0)
+      );
 
-    const spi = clamp((coherence + (100 - constraint) + adaptability + entanglement + emergence) / 5);
-
-    const flags = [];
-    if (constraint > 70) flags.push("High constraint: capacity or budget bottleneck likely.");
-    if (coherence < 50) flags.push("Low coherence: metrics/context unclear or inconsistent.");
-    if (adaptability < 40) flags.push("Low adaptability: iterate more frequently (content/tests).");
-    if (entanglement < 40) flags.push("Low entanglement: improve distribution/collabs/SEO.");
-    if (emergence < 50) flags.push("Moderate emergence: clarify growth loop and monetization path.");
-
-    const nextActions = [
-      "Clarify the system: define 1 goal + 3 KPI signals (views, engagement, conversion).",
-      "Reduce constraints: pick one bottleneck (time, budget, creative throughput) and remove it.",
-      "Increase adaptability: commit to a weekly test cadence (1 experiment/week).",
-      "Increase entanglement: add 1 distribution partner/channel (collab, newsletter, SEO, PR).",
-      "Drive emergence: build a repeatable loop (content → capture → offer → retention)."
-    ];
-
-    return { coherence, constraint, adaptability, entanglement, emergence, spi, flags, nextActions };
+    return { coherence, constraint, adaptability, entanglement, emergence };
   }
 
-  // Investor-friendly output schema (feels “scientific”)
-  function buildSchema(m, s) {
-    return {
-      model: "Creationist Entanglement Theory (CET)",
-      layer: "Structural Performance Intelligence",
-      tool: "CET Audit (Beta)",
-      timestamp: new Date().toISOString(),
-      input: {
-        platform: m.platform,
-        timeframe: m.timeframe,
-        metrics: {
-          views: m.views,
-          engagements: m.engagements,
-          followers: m.followers,
-          posts_per_week: m.postsPerWeek,
-          revenue: m.revenue
-        },
-        notes: m.notes
-      },
-      variables_0_100: {
-        coherence: s.coherence,
-        constraint: s.constraint,
-        adaptability: s.adaptability,
-        entanglement: s.entanglement,
-        emergence: s.emergence
-      },
-      composite: {
-        spi: s.spi, // Structural Performance Intelligence score
-        band: s.spi >= 80 ? "A" : s.spi >= 65 ? "B" : s.spi >= 50 ? "C" : "D"
-      },
-      interpretation: {
-        flags: s.flags,
-        recommended_actions: s.nextActions.slice(0, 3)
-      },
-      disclaimer:
-        "Prototype analytical model for structural interpretation only. Not diagnostic, financial, or predictive advice."
-    };
+  function spiScore(vars) {
+    const SPI = (vars.coherence + vars.constraint + vars.adaptability + vars.entanglement + vars.emergence) / 5;
+    return clamp(SPI);
   }
 
+  function interpret(SPI) {
+    if (SPI >= 80) return "High structural readiness (investor-grade system signals).";
+    if (SPI >= 60) return "Moderate readiness (strong base; optimize bottlenecks).";
+    if (SPI >= 40) return "Early structure (needs clearer system design + feedback loops).";
+    return "Low structural readiness (rebuild inputs, workflow, and measurement).";
+  }
+
+  function recommendations(vars, m) {
+    const rec = [];
+    if (vars.coherence < 55) rec.push("Clarify goal + single primary KPI (e.g., monthly views or conversions) and write it into your workflow.");
+    if (vars.constraint > 70) rec.push("Constraint is high: reduce scope or add capacity (automation, assistant hours, or tighter content cadence).");
+    if (vars.adaptability < 55) rec.push("Add an iteration loop: run 1 experiment/week (hook, format, posting time) and log results.");
+    if (vars.entanglement < 55) rec.push("Increase entanglement: 2 collaborations or partner touchpoints this month (cross-post, PR, affiliate, newsletter).");
+    if (vars.emergence < 55) rec.push("Improve emergence: focus on distribution (reels/shorts cadence, SEO captions, reposting winners).");
+
+    // Friendly metric-specific hints
+    if (m.engagement_rate_pct != null && m.engagement_rate_pct < 2) rec.push("Engagement is low: tighten niche + stronger CTA + fewer topics per week.");
+    if (m.posts_per_week != null && m.posts_per_week < 2) rec.push("Posting cadence is low: aim for 2–4 posts/week for stable signal.");
+    return rec.slice(0, 6);
+  }
+
+  // --- UI Mount (safe) ---
   function mount() {
-    // Prevent double-mount
-    if (document.getElementById("cet-overlay-root")) return;
-
-    const root = document.createElement("div");
-    root.id = "cet-overlay-root";
-    root.style.cssText = `
-      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-      z-index: 999999; pointer-events: none;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    // Styles
+    const style = document.createElement("style");
+    style.textContent = `
+      #cet-overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(2,4,8,.72);z-index:999999;font-family:system-ui,-apple-system,Segoe UI,Arial;color:#fff;padding:18px}
+      #cet-card{width:min(780px,94vw);background:#0b1422;border:1px solid rgba(255,255,255,.08);border-radius:22px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+      #cet-h1{font-size:34px;line-height:1.1;margin:6px 0 8px}
+      #cet-sub{opacity:.85;margin:0 0 14px;font-size:14px}
+      #cet-help{opacity:.78;font-size:13px;margin:0 0 10px}
+      #cet-input{width:100%;min-height:140px;border-radius:14px;border:1px solid rgba(255,255,255,.08);padding:14px;background:#050914;color:#fff;outline:none}
+      #cet-row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+      #cet-btn{padding:12px 16px;border-radius:12px;border:none;background:#2f7ef7;color:#fff;font-size:15px;cursor:pointer}
+      #cet-btn[disabled]{opacity:.5;cursor:not-allowed}
+      #cet-close{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:12px;padding:10px 12px;cursor:pointer}
+      #cet-out{margin-top:14px;background:#050914;border:1px solid rgba(255,255,255,.08);padding:14px;border-radius:14px;display:none;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+      #cet-pay{margin-top:10px;font-size:13px;display:none;opacity:.9}
+      #cet-pay a{color:#7fb3ff;text-decoration:underline}
     `;
+    document.head.appendChild(style);
 
-    const card = document.createElement("div");
-    card.style.cssText = `
-      width: min(720px, calc(100vw - 28px));
-      background: rgba(12,16,24,0.92);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 18px;
-      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
-      padding: 22px 20px;
-      color: #fff;
-      pointer-events: auto;
-    `;
-
-    card.innerHTML = `
-      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
-        <div>
-          <div style="letter-spacing:.08em;text-transform:uppercase;font-size:12px;opacity:.85;">
-            Creationist Entanglement Theory (CET)
-          </div>
-          <div style="font-size:34px;line-height:1.05;font-weight:800;margin-top:6px;">
-            Structural Performance Intelligence
-          </div>
-          <div style="opacity:.85;margin-top:8px;">
-            Tell us what you want to audit. Paste simple stats — no CET math required.
-          </div>
+    const overlay = document.createElement("div");
+    overlay.id = "cet-overlay";
+    overlay.innerHTML = `
+      <div id="cet-card" role="dialog" aria-label="CET Audit">
+        <div style="opacity:.8;font-size:12px;letter-spacing:.08em">CREATIONIST ENTANGLEMENT THEORY (CET)</div>
+        <div id="cet-h1">Structural Performance Intelligence</div>
+        <div id="cet-sub">Paste your public stats in plain English. No formulas. No CET math.</div>
+        <div id="cet-help">
+          Example:<br>
+          Platform: Instagram<br>
+          Monthly Views: 46k<br>
+          Followers: 12k<br>
+          Engagement Rate: 3.2%<br>
+          Posts/Week: 4<br>
+          Goal: brand deals
         </div>
-        <button id="cet-close" aria-label="Close" style="
-          background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
-          color:#fff;border-radius:12px;padding:8px 10px;cursor:pointer;
-        ">✕</button>
-      </div>
-
-      <div style="margin-top:14px;display:grid;gap:10px;">
-        <div style="display:grid;gap:8px;">
-          <div style="opacity:.9;font-size:13px;">
-            Paste metrics like:
-            <span style="opacity:.8">platform=instagram, views=106000, likes=3200, comments=210, shares=140, followers=46700, posts/week=3, timeframe=90 days</span>
-            <br/><span style="opacity:.8">or just write: “Instagram last 90 days: 106k views, 46.7k followers, 3.5k total engagements”</span>
-          </div>
-          <textarea id="cet-input" rows="5" style="
-            width:100%; resize:vertical; padding:12px 12px;
-            border-radius:14px; border:1px solid rgba(255,255,255,.12);
-            background:rgba(255,255,255,.06); color:#fff; outline:none;
-          " placeholder="Paste your stats or describe your system…"></textarea>
+        <textarea id="cet-input" placeholder="Paste your stats here…"></textarea>
+        <div id="cet-row">
+          <button id="cet-btn">Run free CET audit</button>
+          <button id="cet-close" type="button">Close</button>
         </div>
-
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          <button id="cet-run" style="
-            background:#2f78ff;border:none;color:#fff;
-            border-radius:14px;padding:12px 16px;font-weight:700;
-            cursor:pointer;
-          ">Run Free CET Audit</button>
-
-          <div id="cet-status" style="opacity:.85;font-size:13px;"></div>
-        </div>
-
-        <div id="cet-result" style="display:none;margin-top:8px;">
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <div style="font-size:14px;opacity:.9;">
-              SPI Score: <span id="cet-spi" style="font-weight:800;"></span>
-              <span id="cet-band" style="opacity:.85;margin-left:8px;"></span>
-            </div>
-          </div>
-
-          <div style="margin-top:10px;display:grid;gap:10px;">
-            <div id="cet-flags" style="font-size:13px;opacity:.92;"></div>
-            <div id="cet-actions" style="font-size:13px;opacity:.92;"></div>
-
-            <details style="margin-top:4px;">
-              <summary style="cursor:pointer;opacity:.9;">View scientific output schema (JSON)</summary>
-              <pre id="cet-json" style="
-                margin-top:8px;white-space:pre-wrap;word-break:break-word;
-                background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.10);
-                padding:12px;border-radius:12px;font-size:12px;opacity:.95;
-              "></pre>
-            </details>
-          </div>
-        </div>
-
-        <div id="cet-paywall" style="display:none;margin-top:10px;
-          border-top:1px solid rgba(255,255,255,.10);padding-top:10px;opacity:.95;">
-          <div style="font-weight:700;">Free audit used for today.</div>
-          <div style="opacity:.85;font-size:13px;margin-top:4px;">
-            Upgrade to run unlimited audits, compare platforms, and track improvements over time.
-          </div>
-          <div style="opacity:.8;font-size:12px;margin-top:4px;">
-            (Hook this button to Stripe/checkout later.)
-          </div>
-          <button id="cet-upgrade" style="
-            margin-top:10px;background:rgba(255,255,255,.10);
-            border:1px solid rgba(255,255,255,.16);color:#fff;
-            border-radius:12px;padding:10px 12px;cursor:pointer;
-          ">Upgrade to Unlimited</button>
-        </div>
-
-        <div style="margin-top:10px;opacity:.65;font-size:12px;">
-          Status: prototype analytical model (non-diagnostic; interpretive layer).
-        </div>
+        <div id="cet-pay">Free audit used today. <a href="${PAY_URL}" target="_blank" rel="noopener">Upgrade for unlimited audits</a>.</div>
+        <div id="cet-out"></div>
       </div>
     `;
+    document.body.appendChild(overlay);
 
-    root.appendChild(card);
-    document.body.appendChild(root);
+    const btn = overlay.querySelector("#cet-btn");
+    const closeBtn = overlay.querySelector("#cet-close");
+    const input = overlay.querySelector("#cet-input");
+    const out = overlay.querySelector("#cet-out");
+    const pay = overlay.querySelector("#cet-pay");
 
-    const $ = (id) => card.querySelector(id);
-    const input = $("#cet-input");
-    const runBtn = $("#cet-run");
-    const status = $("#cet-status");
-    const result = $("#cet-result");
-    const spiEl = $("#cet-spi");
-    const bandEl = $("#cet-band");
-    const flagsEl = $("#cet-flags");
-    const actionsEl = $("#cet-actions");
-    const jsonEl = $("#cet-json");
-    const paywall = $("#cet-paywall");
-    const upgrade = $("#cet-upgrade");
+    closeBtn.onclick = () => overlay.remove();
 
-    // Close
-    $("#cet-close").onclick = () => root.remove();
+    if (usedToday()) {
+      btn.disabled = true;
+      pay.style.display = "block";
+    }
 
-    // Paywall gate
-    function gate() {
+    btn.onclick = () => {
       if (usedToday()) {
-        runBtn.disabled = true;
-        runBtn.style.opacity = "0.5";
-        paywall.style.display = "block";
-        status.textContent = "Free run already used today.";
-        return true;
+        pay.style.display = "block";
+        return;
       }
-      paywall.style.display = "none";
-      return false;
-    }
-    gate();
+      const raw = input.value || "";
+      const metrics = parseMetrics(raw);
+      const vars = computeVariables(metrics);
+      const SPI = spiScore(vars);
+      const payload = {
+        model: "Creationist Entanglement Theory (CET) Structural Performance Intelligence",
+        version: VERSION,
+        timestamp: new Date().toISOString(),
+        input_summary: {
+          platform: metrics.platform,
+          goal: metrics.goal
+        },
+        metrics_parsed: metrics,
+        cet_system_variables: vars,
+        SPI: Number(SPI.toFixed(1)),
+        interpretation: interpret(SPI),
+        recommendations: recommendations(vars, metrics),
+        usage: {
+          free_run_limit: "1 per day",
+          used_today: true
+        }
+      };
 
-    upgrade.onclick = () => {
-      alert("Upgrade flow not connected yet. Add Stripe later.");
+      markUsed();
+      out.style.display = "block";
+      out.textContent = JSON.stringify(payload, null, 2);
+      btn.disabled = true;
+      pay.style.display = "block";
     };
-
-    function render(schema) {
-      const spi = schema.composite.spi;
-      spiEl.textContent = `${spi.toFixed(1)}/100`;
-      bandEl.textContent = `Band ${schema.composite.band}`;
-      const flags = schema.interpretation.flags || [];
-      const actions = schema.interpretation.recommended_actions || [];
-      flagsEl.innerHTML = flags.length
-        ? `<b>Flags:</b><br/>• ${flags.join("<br/>• ")}`
-        : `<b>Flags:</b><br/>None detected.`;
-      actionsEl.innerHTML = actions.length
-        ? `<b>Next actions:</b><br/>1) ${actions.join("<br/>2) ").replace("<br/>2)", "<br/>2)")}`
-        : "";
-      jsonEl.textContent = JSON.stringify(schema, null, 2);
-      result.style.display = "block";
-    }
-
-    function run() {
-      try {
-        status.textContent = "";
-        if (gate()) return;
-
-        const metrics = parseInput(input.value);
-        const scores = scoreCET(metrics);
-        const schema = buildSchema(metrics, scores);
-
-        render(schema);
-        markUsed();
-        gate();
-        status.textContent = "Complete.";
-      } catch (e) {
-        status.textContent = "Error: " + (e && e.message ? e.message : "unknown");
-      }
-    }
-
-    runBtn.onclick = run;
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run();
-    });
-
-    // Helpful default example (so it looks alive)
-    if (!input.value.trim()) {
-      input.value = "platform=instagram, timeframe=90 days, views=106000, followers=46700, likes=2800, comments=210, shares=140, posts/week=3";
-    }
   }
 
-  // Mount when DOM is ready (safe for Framer)
+  // Mount safely after DOM exists
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", mount);
   } else {
