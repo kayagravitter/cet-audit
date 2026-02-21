@@ -265,3 +265,9 @@
     mount();
   }
 })();
+window.CET_AUDIT_BOOT = window.CET_AUDIT_BOOT || function () {
+  // If your script already mounts the UI automatically, leave this empty.
+  // Otherwise call your mount function here (example names below):
+  if (typeof window.mountCETAudit === "function") window.mountCETAudit();
+  if (typeof window.initCETAudit === "function") window.initCETAudit();
+};
