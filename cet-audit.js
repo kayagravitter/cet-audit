@@ -1,50 +1,40 @@
+(function () {
 
-Kaya Gravitter <gravitterkaya@gmail.com>
-11:24 PM (0 minutes ago)
-to me
+if (document.getElementById("cet-root")) return;
 
-// Creationist Entanglement Theory (CET)
-// Structural Performance Intelligence Audit Engine
+const root=document.createElement("div");
+root.id="cet-root";
+root.style.cssText="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1200px 800px at 50% 20%,#142233 0%,#0b0f14 55%,#06080c 100%);color:#fff;font-family:system-ui";
 
-function CETAudit(input) {
+root.innerHTML=`
+<div style="width:min(860px,100%);border-radius:18px;padding:28px;background:rgba(17,26,34,.72);border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 60px rgba(0,0,0,.45)">
+<div style="opacity:.8;font-size:13px;text-transform:uppercase">Creationist Entanglement Theory (CET)</div>
+<h1 style="margin:10px 0 6px">Structural Performance Intelligence</h1>
+<div style="opacity:.8;margin-bottom:14px">Describe the system you want analyzed.</div>
 
-  const text = input.toLowerCase();
+<textarea id="cetInput" rows="5" style="width:100%;padding:14px;border-radius:12px;background:#0004;color:#fff;border:1px solid #fff2"></textarea>
 
-  function score(keywordSet){
-    let count = 0;
-    keywordSet.forEach(k=>{
-      if(text.includes(k)) count++;
-    });
-    return Math.min(100, count * 20);
-  }
+<button id="cetRun" style="margin-top:14px;padding:12px 16px;border-radius:12px;background:#2b7cff;color:#fff;border:none;cursor:pointer">Run CET Audit</button>
 
-  const variables = {
-    coherence: score(["clear","defined","structured","system"]),
-    constraint: score(["limit","resource","budget","time"]),
-    adaptability: score(["pivot","change","learning","iteration"]),
-    entanglement: score(["network","team","dependency","market"]),
-    emergence: score(["growth","scale","innovation","impact"])
-  };
+<div id="cetReport" style="margin-top:18px;display:none"></div>
+</div>
+`;
 
-  const SPI =
-    (variables.coherence +
-     variables.constraint +
-     variables.adaptability +
-     variables.entanglement +
-     variables.emergence) / 5;
+document.body.appendChild(root);
 
-  return {
-    model: "Creationist Entanglement Theory",
-    layer: "Structural Performance Intelligence",
-    variables,
-    SPI: SPI.toFixed(2),
-    interpretation:
-      SPI > 75 ? "High structural coherence detected."
-      : SPI > 50 ? "Moderate system stability."
-      : "Low structural coherence — redesign recommended."
-  };
-}
+const btn=document.getElementById("cetRun");
+const input=document.getElementById("cetInput");
+const report=document.getElementById("cetReport");
 
-// expose globally
-window.CETAudit = CETAudit;
-window.CETAudit = CETAudit;
+btn.onclick=function(){
+if(!window.CETAudit){alert("CET engine not loaded");return;}
+const r=window.CETAudit(input.value);
+report.style.display="block";
+report.innerHTML=`
+<h3>SPI: ${r.SPI}</h3>
+<p>${r.interpretation}</p>
+<pre>${JSON.stringify(r,null,2)}</pre>
+`;
+};
+
+})();
