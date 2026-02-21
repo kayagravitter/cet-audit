@@ -179,7 +179,7 @@ Goal: brand deals (optional)</div>
 
     if (usedToday()) showGated();
 
-    upgrade.onclick = () => window.open(UPGRADE_URL, "_blank", "noopener,noreferrer");
+    upgrade.onclick = () => window.open(UPGRADE_URL, "_blank");
     closeBtn.onclick = () => overlay.remove();
 
     runBtn.onclick = () => {
