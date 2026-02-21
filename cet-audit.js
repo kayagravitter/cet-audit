@@ -179,7 +179,7 @@ Goal: brand deals (optional)</div>
 
     if (usedToday()) showGated();
 
-    upgrade.onclick = () => window.open(UPGRADE_URL, "_blank");
+    upgrade.onclick = () => window.open(UPGRADE_URL, "https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00");
     closeBtn.onclick = () => overlay.remove();
 
     runBtn.onclick = () => {
