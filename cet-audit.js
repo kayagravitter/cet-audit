@@ -47,3 +47,4 @@ function CETAudit(input) {
 
 // expose globally
 window.CETAudit = CETAudit;
+window.CETAudit = CETAudit;
