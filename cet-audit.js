@@ -1,81 +1,199 @@
-(()=>{const d=document,ID="cet-root",K="cetAuditLastRun";
-function ui(){if(d.getElementById(ID))return;
-const r=d.createElement("div");r.id=ID;
-r.innerHTML=`<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at top,#132436,#05070a);padding:24px;">
-<div style="width:min(720px,92vw);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);border-radius:22px;padding:26px;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;">
-<div style="letter-spacing:.14em;font-size:12px;opacity:.75;margin-bottom:10px;">CREATIONIST ENTANGLEMENT THEORY (CET)</div>
-<div style="font-size:42px;line-height:1.05;font-weight:700;margin:0 0 12px;">Structural Performance Intelligence</div>
-<div style="opacity:.8;font-size:14px;margin-bottom:16px;">
-Paste your <b>public stats</b> (no math). Example:<br>
-<span style="opacity:.9">Platform: Instagram • Views: 106000 • Likes: 4200 • Comments: 380 • Shares: 210 • New followers: 950</span>
-</div>
-<textarea id="cet_in" placeholder="Paste your stats here…" style="width:100%;min-height:120px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);color:#fff;padding:14px;outline:none;"></textarea>
-<div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap;">
-<button id="cet_run" style="background:#2b74ff;color:#fff;border:none;border-radius:14px;padding:12px 16px;font-weight:700;cursor:pointer;">Run CET Audit</button>
-<span id="cet_note" style="opacity:.75;font-size:12px;">Free: 1 audit/day. For more runs, upgrade.</span>
-</div>
-<div id="cet_out" style="margin-top:14px;display:none;padding:14px;border-radius:14px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.10);"></div>
-</div></div>`;
-d.body.appendChild(r);
+/* ================================
+   CET AUDIT ENGINE — PUBLIC BUILD
+   Creationist Entanglement Theory
+================================ */
 
-const $=q=>d.getElementById(q);
-function n(s){const m=String(s||"").match(/(-?\d+(\.\d+)?)/);return m?Number(m[1]):0}
-function grab(txt,key){const re=new RegExp(key+"\\s*[:=]?\\s*(-?\\d+(?:\\.\\d+)?)","i");const m=txt.match(re);return m?Number(m[1]):0}
-function score(p){return Math.max(0,Math.min(100,Math.round(p)))}
+(function () {
 
-function run(){
-const out=$("cet_out"),note=$("cet_note");
-const today=new Date().toDateString();
-if(localStorage.getItem(K)===today){
-note.textContent="Free audit already used today. Upgrade for more runs.";
-out.style.display="block";
-out.innerHTML="⛔ Free audit already used today.";
-return;
+if (window.CET_LOADED) return;
+window.CET_LOADED = true;
+
+/* ---------- STYLE ---------- */
+
+const style = document.createElement("style");
+style.innerHTML = `
+#cet-root{
+ position:fixed;
+ inset:0;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ background:#05070c;
+ z-index:999999;
+ font-family:system-ui,Arial;
+ color:#fff;
 }
-const t=$("cet_in").value||"";
-if(t.trim().length<8){out.style.display="block";out.innerHTML="Please paste a short set of stats.";return;}
+#cet-card{
+ width:min(720px,92vw);
+ background:#0b1422;
+ border-radius:20px;
+ padding:28px;
+ box-shadow:0 20px 60px rgba(0,0,0,.6);
+}
+#cet-title{font-size:40px;margin:10px 0}
+#cet-input{
+ width:100%;
+ min-height:140px;
+ border-radius:12px;
+ border:none;
+ padding:14px;
+ background:#020409;
+ color:#fff;
+}
+#cet-btn{
+ margin-top:14px;
+ padding:12px 18px;
+ border-radius:10px;
+ border:none;
+ background:#2f7ef7;
+ color:#fff;
+ font-size:16px;
+ cursor:pointer;
+}
+#cet-out{
+ margin-top:14px;
+ background:#020409;
+ padding:14px;
+ border-radius:12px;
+ display:none;
+ white-space:pre-wrap;
+}
+#cet-pay{margin-top:10px;font-size:13px;display:none}
+`;
+document.head.appendChild(style);
 
-const views = grab(t,"views")||grab(t,"impressions")||grab(t,"reach")||n(t);
-const likes = grab(t,"likes");
-const comments = grab(t,"comments");
-const shares = grab(t,"shares")||grab(t,"saves");
-const growth = grab(t,"new followers")||grab(t,"followers")||grab(t,"growth");
+/* ---------- UI ---------- */
 
-const engagements = likes+comments+shares;
-const rho = views? engagements/views : 0;
-const tau = Math.log(views+1)/(Math.max(1,growth)+1);
-const sigma = Math.abs(rho-0.05);
+const root = document.createElement("div");
+root.id = "cet-root";
 
-const coherence   = score((rho*1400));          // engagement density
-const constraint  = score((tau*18));            // friction proxy
-const adaptability= score((shares/(Math.max(1,likes))*100)); // share efficiency
-const entangle    = score((comments/(Math.max(1,views))*8000)); // conversation density
-const emergence   = score((growth/(Math.max(1,views))*120000)); // growth signal
-
-const SPI = score((coherence+ (100-constraint) + adaptability + entangle + emergence)/5);
-
-let status="Stable System";
-let insight="Maintain cadence; test 1 variable at a time.";
-if(SPI>=75){status="Structural Expansion Detected";insight="Double down on top-performing channel; scale distribution.";}
-else if(SPI<=40){status="Constraint Bottleneck";insight="Your system is constrained—simplify offer, tighten funnel, reduce friction.";}
-
-out.style.display="block";
-out.innerHTML =
-`<div style="font-weight:800;margin-bottom:6px;">CET Output (Structural Performance Intelligence)</div>
-<div style="opacity:.85;font-size:13px;margin-bottom:10px;">Model: CET • Layer: Structural Performance Intelligence • Mode: Prototype (interpretive)</div>
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px;">
-<div><b>SPI:</b> ${SPI}/100</div><div><b>Status:</b> ${status}</div>
-<div>Coherence: ${coherence}</div><div>Constraint: ${constraint}</div>
-<div>Adaptability: ${adaptability}</div><div>Entanglement: ${entangle}</div>
-<div>Emergence: ${emergence}</div><div></div>
+root.innerHTML = `
+<div id="cet-card">
+<div style="opacity:.7;font-size:12px;letter-spacing:.15em">
+CREATIONIST ENTANGLEMENT THEORY
 </div>
-<div style="margin-top:10px;opacity:.9;"><b>Interpretation:</b> ${insight}</div>`;
 
-localStorage.setItem(K,today);
+<div id="cet-title">Structural Performance Intelligence</div>
+
+<p style="opacity:.8">
+Describe your project using simple numbers and facts.
+Example:
+Platform: Instagram
+Views: 46k/month
+Goal: grow audience
+Team: solo founder
+</p>
+
+<textarea id="cet-input"
+placeholder="Paste your stats here..."></textarea>
+
+<button id="cet-btn">Run Free CET Audit</button>
+
+<div id="cet-out"></div>
+<div id="cet-pay">
+Free audit used today.<br>
+Upgrade to unlock unlimited audits.
+</div>
+
+</div>
+`;
+
+document.body.appendChild(root);
+
+/* ---------- FREE LIMIT ---------- */
+
+const today = new Date().toISOString().slice(0,10);
+const key = "cet_free_" + today;
+
+function usedToday(){
+  return localStorage.getItem(key)==="1";
 }
 
-$("cet_run").addEventListener("click",run);
-$("cet_in").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))run();});
+/* ---------- CET SCORING ---------- */
+
+function score(text,words){
+ let c=0;
+ words.forEach(w=>{
+   if(text.includes(w)) c++;
+ });
+ return Math.min(100,c*20);
 }
-if(d.readyState==="loading")d.addEventListener("DOMContentLoaded",ui); else ui();
+
+function runAudit(input){
+
+ const t = input.toLowerCase();
+
+ const coherence = score(t,
+  ["goal","plan","clear","system","strategy"]);
+
+ const constraint = score(t,
+  ["budget","limited","solo","delay","problem"]);
+
+ const adaptability = score(t,
+  ["test","iterate","weekly","change","experiment"]);
+
+ const entanglement = score(t,
+  ["partner","collab","network","brand","press"]);
+
+ const emergence = score(t,
+  ["scale","growth","expand","increase","trend"]);
+
+ const SPI = (
+   coherence +
+   constraint +
+   adaptability +
+   entanglement +
+   emergence
+ ) / 5;
+
+ return {
+   model:"CET Structural Performance Intelligence",
+   variables:{
+     coherence,
+     constraint,
+     adaptability,
+     entanglement,
+     emergence
+   },
+   SPI:SPI.toFixed(1),
+   interpretation:
+     SPI>75
+      ?"High structural readiness"
+      :SPI>50
+      ?"Moderate system stability"
+      :"Low coherence — redesign advised"
+ };
+}
+
+/* ---------- BUTTON ---------- */
+
+const btn = document.getElementById("cet-btn");
+const input = document.getElementById("cet-input");
+const out = document.getElementById("cet-out");
+const pay = document.getElementById("cet-pay");
+
+if(usedToday()){
+ btn.disabled=true;
+ pay.style.display="block";
+}
+
+btn.onclick = () => {
+
+ if(usedToday()){
+   pay.style.display="block";
+   return;
+ }
+
+ const result = runAudit(input.value);
+
+ localStorage.setItem(key,"1");
+
+ out.style.display="block";
+ out.textContent =
+   JSON.stringify(result,null,2);
+
+ btn.disabled=true;
+ pay.style.display="block";
+};
+
 })();
