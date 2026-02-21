@@ -1,40 +1,122 @@
-(function () {
+/* CET Audit Engine v1 (prototype, non-diagnostic)
+   Model: Creationist Entanglement Theory (CET)
+   Layer: Structural Performance Intelligence (SPI)
+*/
+(function (w) {
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const toNum = (v, d) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : d;
+  };
+  const nowISO = () => new Date().toISOString();
 
-if (document.getElementById("cet-root")) return;
+  // 5 official CET system variables (v1)
+  // Each is 0–100. Higher is stronger.
+  const VARS = [
+    { key: "coherence", name: "Structural Coherence", hint: "clarity, consistency, defined roles, clean interfaces" },
+    { key: "constraint", name: "Constraint Integrity", hint: "budget/time limits, guardrails, compliance, resource reality" },
+    { key: "adaptability", name: "Adaptive Capacity", hint: "iteration speed, learning loops, change tolerance, modularity" },
+    { key: "entanglement", name: "Dependency Entanglement", hint: "coupling across teams/tools/vendors; risk of cascade failures" },
+    { key: "emergence", name: "Emergent Value Potential", hint: "scalability, compounding impact, network effects, innovation runway" }
+  ];
 
-const root=document.createElement("div");
-root.id="cet-root";
-root.style.cssText="min-height:100vh;width:100%;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(1200px 800px at 50% 20%,#142233 0%,#0b0f14 55%,#06080c 100%);color:#fff;font-family:system-ui";
+  // User-friendly parser:
+  // Accepts: plain text description OR quick scores like:
+  // coherence=70 constraint=55 adaptability=80 entanglement=40 emergence=65
+  function parseInput(raw) {
+    const text = String(raw || "").trim();
+    const lower = text.toLowerCase();
 
-root.innerHTML=`
-<div style="width:min(860px,100%);border-radius:18px;padding:28px;background:rgba(17,26,34,.72);border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 60px rgba(0,0,0,.45)">
-<div style="opacity:.8;font-size:13px;text-transform:uppercase">Creationist Entanglement Theory (CET)</div>
-<h1 style="margin:10px 0 6px">Structural Performance Intelligence</h1>
-<div style="opacity:.8;margin-bottom:14px">Describe the system you want analyzed.</div>
+    const scores = {};
+    // try to extract explicit numbers if present
+    for (const v of VARS) {
+      const re = new RegExp(`${v.key}\\s*[:=]\\s*(\\d{1,3})`, "i");
+      const m = lower.match(re);
+      if (m) scores[v.key] = clamp(toNum(m[1], 50), 0, 100);
+    }
 
-<textarea id="cetInput" rows="5" style="width:100%;padding:14px;border-radius:12px;background:#0004;color:#fff;border:1px solid #fff2"></textarea>
+    // If no explicit scores, derive rough signals from keywords (prototype heuristic)
+    const hasAnyScores = Object.keys(scores).length > 0;
+    if (!hasAnyScores) {
+      const kw = {
+        coherence: ["clear", "defined", "structured", "documented", "repeatable", "standard"],
+        constraint: ["budget", "deadline", "policy", "legal", "security", "risk", "compliance", "scope"],
+        adaptability: ["iterate", "experiment", "pivot", "learn", "feedback", "modular", "refactor"],
+        entanglement: ["dependency", "vendor", "handoff", "approval", "integration", "legacy", "blocked"],
+        emergence: ["scale", "growth", "automation", "leverage", "network", "platform", "compounding", "innovation"]
+      };
+      const scoreFrom = (arr) => clamp(arr.reduce((c, k) => (lower.includes(k) ? c + 1 : c), 0) * 18 + 28, 0, 100);
+      scores.coherence = scoreFrom(kw.coherence);
+      scores.constraint = scoreFrom(kw.constraint);
+      scores.adaptability = scoreFrom(kw.adaptability);
+      scores.entanglement = scoreFrom(kw.entanglement);
+      scores.emergence = scoreFrom(kw.emergence);
+    }
 
-<button id="cetRun" style="margin-top:14px;padding:12px 16px;border-radius:12px;background:#2b7cff;color:#fff;border:none;cursor:pointer">Run CET Audit</button>
+    return { text, scores };
+  }
 
-<div id="cetReport" style="margin-top:18px;display:none"></div>
-</div>
-`;
+  // CET output schema (so it feels scientific / investor-readable)
+  // SPI: aggregate 0–100
+  // Risk flags: simple thresholds
+  function CETAudit(input) {
+    const { text, scores } = parseInput(input);
 
-document.body.appendChild(root);
+    const coherence = scores.coherence;
+    const constraint = scores.constraint;
+    const adaptability = scores.adaptability;
+    const entanglement = scores.entanglement;
+    const emergence = scores.emergence;
 
-const btn=document.getElementById("cetRun");
-const input=document.getElementById("cetInput");
-const report=document.getElementById("cetReport");
+    // SPI logic: entanglement is a "drag" (high entanglement reduces stability)
+    const spi = clamp(
+      (coherence * 0.24) +
+      (constraint * 0.20) +
+      (adaptability * 0.22) +
+      ((100 - entanglement) * 0.18) +
+      (emergence * 0.16),
+      0, 100
+    );
 
-btn.onclick=function(){
-if(!window.CETAudit){alert("CET engine not loaded");return;}
-const r=window.CETAudit(input.value);
-report.style.display="block";
-report.innerHTML=`
-<h3>SPI: ${r.SPI}</h3>
-<p>${r.interpretation}</p>
-<pre>${JSON.stringify(r,null,2)}</pre>
-`;
-};
+    const flags = [];
+    if (coherence < 45) flags.push({ code: "LOW_COH", level: "watch", message: "Low coherence: define roles, interfaces, and success criteria." });
+    if (constraint < 45) flags.push({ code: "LOW_CON", level: "watch", message: "Weak constraints: tighten scope, guardrails, budget/time assumptions." });
+    if (adaptability < 45) flags.push({ code: "LOW_ADA", level: "watch", message: "Low adaptability: shorten feedback loops and modularize changes." });
+    if (entanglement > 65) flags.push({ code: "HIGH_ENT", level: "risk", message: "High entanglement: dependencies may cascade; reduce coupling." });
+    if (emergence < 45) flags.push({ code: "LOW_EMG", level: "watch", message: "Low emergence: identify compounding levers and scalable loops." });
 
-})();
+    const tier =
+      spi >= 80 ? "Tier A (Investor-ready structure)" :
+      spi >= 65 ? "Tier B (Strong, with targeted fixes)" :
+      spi >= 50 ? "Tier C (Needs structural improvements)" :
+      "Tier D (High friction / redesign recommended)";
+
+    const interpretation =
+      `SPI ${spi.toFixed(1)} — ${tier}. ` +
+      (flags.length ? `Key flags: ${flags.map(f => f.code).join(", ")}.` : "No major flags detected.");
+
+    return {
+      schema_version: "CET-SPI-1.0",
+      timestamp_utc: nowISO(),
+      model: "Creationist Entanglement Theory (CET)",
+      layer: "Structural Performance Intelligence (SPI)",
+      input_type: text && /[:=]\s*\d/.test(text) ? "scored_variables" : "system_description",
+      variables: {
+        coherence: { value: coherence, scale: "0-100", label: "Structural Coherence" },
+        constraint: { value: constraint, scale: "0-100", label: "Constraint Integrity" },
+        adaptability: { value: adaptability, scale: "0-100", label: "Adaptive Capacity" },
+        entanglement: { value: entanglement, scale: "0-100", label: "Dependency Entanglement" },
+        emergence: { value: emergence, scale: "0-100", label: "Emergent Value Potential" }
+      },
+      spi: { value: Number(spi.toFixed(1)), scale: "0-100", tier },
+      flags,
+      interpretation,
+      next_actions: flags.length
+        ? flags.map(f => f.message)
+        : ["Maintain current structure; continue monitoring with periodic CET audits."]
+    };
+  }
+
+  w.CETAudit = CETAudit;
+  w.CET_VARS = VARS;
+})(window);
