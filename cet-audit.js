@@ -4,7 +4,7 @@
   window.__CET_AUDIT_LOADED__ = true;
 
   const VERSION = "1.1.0";
-  const UPGRADE_URL = "https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00; // TODO: replace with Stripe/Gumroad/LemonSqueezy
+  const UPGRADE_URL = "https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00";// TODO: replace with Stripe/Gumroad/LemonSqueezy
   const $ = (sel, root = document) => root.querySelector(sel);
 
   // 1 free run/day (per browser)
