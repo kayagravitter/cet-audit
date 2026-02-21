@@ -271,3 +271,22 @@ window.CET_AUDIT_BOOT = window.CET_AUDIT_BOOT || function () {
   if (typeof window.mountCETAudit === "function") window.mountCETAudit();
   if (typeof window.initCETAudit === "function") window.initCETAudit();
 };
+/* ===== CET PUBLIC BOOT (Framer Hook) ===== */
+
+window.CET_AUDIT_BOOT = function () {
+  console.log("CET boot starting…");
+
+  // If UI already exists, don't duplicate
+  if (document.getElementById("cet-audit-root")) return;
+
+  // If your script already auto-renders, do nothing.
+  // Otherwise trigger your mount logic here.
+
+  if (typeof mountCETAudit === "function") {
+    mountCETAudit();
+  }
+
+  if (typeof initCETAudit === "function") {
+    initCETAudit();
+  }
+};
