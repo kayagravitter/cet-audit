@@ -1,132 +1,184 @@
-/* Creationist Entanglement Theory (CET)
-   Structural Performance Intelligence — Audit Engine
-   Exposes: window.CETAudit(input)
-*/
+// CET Audit Widget (Public) — 1 free run/day/device
+(() => {
+  const PAY_URL = "https://your-payment-link-here.com"; // TODO: replace
+  const BRAND = "Creationist Entanglement Theory (CET)";
+  const TITLE = "Structural Performance Intelligence Audit";
 
-(function (root, factory) {
-  if (typeof module === "object" && module.exports) module.exports = factory();
-  else root.CETAudit = factory();
-})(typeof window !== "undefined" ? window : globalThis, function () {
-  const clamp = (n, a = 0, b = 100) => Math.max(a, Math.min(b, n));
+  const KEY = "cet_free_run_date";
+  const today = () => new Date().toISOString().slice(0,10);
+  const canRunFree = () => localStorage.getItem(KEY) !== today();
+  const markRan = () => localStorage.setItem(KEY, today());
 
-  // Pull numbers from messy text: "46k views", "$8k/mo", "12%", etc.
-  function extractMetrics(text) {
-    const t = (text || "").toLowerCase();
-    const num = (re) => {
-      const m = t.match(re);
-      if (!m) return null;
-      let v = parseFloat(m[1]);
-      const k = m[2];
-      if (k === "k") v *= 1000;
-      if (k === "m") v *= 1000000;
-      return v;
-    };
+  // --- Minimal styles (clean + centered) ---
+  const css = `
+  #cet-root{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:999999;
+    background:radial-gradient(80% 60% at 50% 35%,rgba(30,60,90,.55),rgba(0,0,0,.86));}
+  .c{width:min(920px,92vw);border-radius:18px;border:1px solid rgba(255,255,255,.12);
+    background:rgba(12,18,24,.72);backdrop-filter:blur(10px);box-shadow:0 24px 80px rgba(0,0,0,.55);
+    padding:22px;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+  .k{letter-spacing:.16em;text-transform:uppercase;opacity:.82;font-size:12px;margin:0 0 8px;}
+  .h{font-size:34px;line-height:1.1;margin:0 0 10px;font-weight:750;}
+  .sub{opacity:.88;margin:0 0 14px;font-size:14px;line-height:1.35}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .in{width:100%;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.24);
+    color:#fff;padding:12px;outline:none;font-size:14px}
+  textarea.in{min-height:90px;resize:vertical}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .btn{border:0;border-radius:12px;padding:11px 14px;background:#2f77ff;color:#fff;font-weight:750;cursor:pointer}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .pill{padding:7px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.12);opacity:.9;font-size:12px}
+  .out{margin-top:14px;display:none}
+  .out.show{display:block}
+  .box{border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:12px;background:rgba(0,0,0,.18)}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;white-space:pre-wrap}
+  a{color:#9ec1ff}
+  @media(max-width:760px){.h{font-size:28px}.grid{grid-template-columns:1fr}}
+  `;
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  // --- Root mount ---
+  const root = document.getElementById("cet-root") || (() => {
+    const d=document.createElement("div"); d.id="cet-root"; document.body.appendChild(d); return d;
+  })();
+
+  root.innerHTML = `
+    <div class="c">
+      <p class="k">${BRAND}</p>
+      <h1 class="h">${TITLE}</h1>
+      <p class="sub">
+        Paste basic, public-safe numbers. You don’t need any “CET variables.”<br>
+        <b>Free:</b> 1 audit per day. <b>More:</b> paid audit link appears after your free run.
+      </p>
+
+      <div class="grid">
+        <input id="plat" class="in" placeholder="Platform (e.g., Instagram / LinkedIn / Shopify)" />
+        <input id="range" class="in" placeholder="Time range (e.g., last 14 days / 90 days)" />
+        <input id="impr" class="in" placeholder="Impressions / Views (number)" />
+        <input id="eng" class="in" placeholder="Engagements (likes+comments+shares) (number)" />
+      </div>
+
+      <textarea id="notes" class="in" placeholder="Optional: goal + what changed (no private info). Example: 'Posted CET preprint, went semi-viral, no ads.'"></textarea>
+
+      <div class="row">
+        <button id="run" class="btn">Run CET Audit</button>
+        <span id="status" class="pill">Ready</span>
+        <span id="free" class="pill"></span>
+      </div>
+
+      <div id="out" class="out">
+        <div class="box">
+          <div style="opacity:.82;font-size:12px;margin-bottom:6px">CET Output (Preview)</div>
+          <div id="headline" style="font-weight:750;margin-bottom:10px"></div>
+          <div class="row" style="margin-top:0">
+            <span id="rho" class="pill"></span>
+            <span id="tau" class="pill"></span>
+            <span id="var" class="pill"></span>
+            <span id="tier" class="pill"></span>
+          </div>
+        </div>
+
+        <div class="box" style="margin-top:10px">
+          <div style="opacity:.82;font-size:12px;margin-bottom:6px">Schema (investor-readable)</div>
+          <div id="json" class="mono"></div>
+        </div>
+
+        <div class="box" style="margin-top:10px">
+          <div style="opacity:.82;font-size:12px;margin-bottom:6px">Need another run today?</div>
+          <div>Unlock more audits: <a href="${PAY_URL}" target="_blank" rel="noopener">Paid CET Audit</a></div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const $ = (id) => root.querySelector(id);
+  const status = $("#status");
+  const out = $("#out");
+  const free = $("#free");
+  const runBtn = $("#run");
+
+  // Show free status
+  free.textContent = canRunFree() ? "Free run available today" : "Free run used today";
+
+  // --- Simple CET math (public-safe) ---
+  // ρ(t) = engagement / impressions (density)
+  // τ ≈ proxy (needs time series for real τ; here we label as "requires time series")
+  // σ² proxy from single snapshot (not real rolling variance) — we mark as "N/A" unless you later add time series CSV.
+  function computeSnapshot(impr, eng) {
+    const rho = impr > 0 ? eng / impr : 0;
+    const tier = rho >= 0.06 ? "High signal" : rho >= 0.03 ? "Emerging" : "Baseline";
     return {
-      followers: num(/(\d+(?:\.\d+)?)\s*(k|m)?\s*(followers|subs|subscribers)\b/),
-      views: num(/(\d+(?:\.\d+)?)\s*(k|m)?\s*(views|impressions|reach)\b/),
-      revenue: num(/\$?\s*(\d+(?:\.\d+)?)\s*(k|m)?\s*(\/mo|per month|monthly|mo)\b/),
-      growthPct: num(/(\d+(?:\.\d+)?)\s*%\s*(growth|increase)\b/)
+      rho,
+      tau: null,
+      variance: null,
+      tier,
+      headline:
+        tier === "High signal"
+          ? "Strong density: content-to-impression coupling looks healthy."
+          : tier === "Emerging"
+          ? "Early signal: density is bending upward—worth controlled testing."
+          : "Baseline: likely needs a single controlled perturbation to reveal structure."
     };
   }
 
-  // Keyword scoring (keeps CET “math layer” private/interpretive)
-  function scoreByKeywords(text, keywords) {
-    const t = (text || "").toLowerCase();
-    let hits = 0;
-    for (const k of keywords) if (t.includes(k)) hits++;
-    return clamp(hits * 20);
-  }
-
-  function inferScores(text) {
+  function schema(payload) {
     return {
-      coherence: scoreByKeywords(text, ["clear", "roles", "process", "system", "strategy", "cadence"]),
-      constraint: scoreByKeywords(text, ["budget", "delay", "bottleneck", "problem", "risk", "time"]),
-      adaptability: scoreByKeywords(text, ["iterate", "test", "learn", "pivot", "experiment", "improve"]),
-      entanglement: scoreByKeywords(text, ["audience", "platform", "community", "partners", "network", "clients"]),
-      emergence: scoreByKeywords(text, ["scale", "growth", "expansion", "roadmap", "vision", "future"])
-    };
-  }
-
-  function normalizeUserNumbers(inputObj) {
-    // Optional: if a user passes explicit numeric CET values
-    const get = (k) => (inputObj && typeof inputObj[k] === "number" ? clamp(inputObj[k]) : null);
-    return {
-      coherence: get("coherence"),
-      constraint: get("constraint"),
-      adaptability: get("adaptability"),
-      entanglement: get("entanglement"),
-      emergence: get("emergence")
-    };
-  }
-
-  function recommendations(scores, metrics) {
-    const rec = [];
-    if (scores.coherence < 55) rec.push("Clarify roles, workflow, and decision rights. Add a weekly cadence.");
-    if (scores.constraint > 70) rec.push("Address constraints: budget, time, bottlenecks. Define top 1–2 limiting factors.");
-    if (scores.adaptability < 55) rec.push("Increase iteration speed: run smaller experiments more frequently.");
-    if (scores.entanglement < 55) rec.push("Strengthen external ties: distribution channels, partnerships, community loops.");
-    if (scores.emergence < 55) rec.push("Define scale pathway: targets, milestones, and what ‘growth’ means in numbers.");
-    if (metrics && (metrics.followers || metrics.views)) rec.push("Turn audience into a pipeline: capture emails, convert with offers, track CAC/LTV.");
-    return rec.slice(0, 5);
-  }
-
-  function tier(spi) {
-    if (spi >= 80) return { label: "A — Scale Ready", risk: "Low" };
-    if (spi >= 60) return { label: "B — Stabilize & Optimize", risk: "Moderate" };
-    return { label: "C — Rebuild Core System", risk: "High" };
-  }
-
-  function CETAudit(input) {
-    const inputText = typeof input === "string" ? input : (input && input.text) || "";
-    const explicit = normalizeUserNumbers(input);
-    const inferred = inferScores(inputText);
-    const scores = {
-      coherence: explicit.coherence ?? inferred.coherence,
-      constraint: explicit.constraint ?? inferred.constraint,
-      adaptability: explicit.adaptability ?? inferred.adaptability,
-      entanglement: explicit.entanglement ?? inferred.entanglement,
-      emergence: explicit.emergence ?? inferred.emergence
-    };
-
-    const spi = Math.round(
-      (scores.coherence + scores.constraint + scores.adaptability + scores.entanglement + scores.emergence) / 5
-    );
-
-    const met = extractMetrics(inputText);
-    const t = tier(spi);
-
-    return {
-      model: "Creationist Entanglement Theory (CET)",
-      layer: "Structural Performance Intelligence",
-      version: "0.1.0",
-      timestamp: new Date().toISOString(),
-
-      input: {
-        text: inputText.slice(0, 5000),
-        extractedMetrics: met
+      CET: "Structural Performance Intelligence",
+      input: payload,
+      outputs: {
+        "ρ": payload.metrics.rho,
+        "τ": payload.metrics.tau,     // null here (needs time series)
+        "σ²": payload.metrics.variance, // null here (needs time series)
+        tier: payload.metrics.tier
       },
-
-      variables: scores,
-
-      indices: {
-        SPI: spi,
-        tier: t.label,
-        riskLevel: t.risk
-      },
-
-      interpretation: {
-        headline:
-          spi >= 80
-            ? "High structural alignment detected. Ready for scalable growth."
-            : spi >= 60
-              ? "Moderate stability detected. Optimization opportunities identified."
-              : "Low structural coherence. System redesign recommended.",
-        notes: "Prototype output — interpretive structural layer (non-diagnostic)."
-      },
-
-      recommendations: recommendations(scores, met)
+      note: "This is a snapshot audit. Time-series upload unlocks τ and rolling variance."
     };
   }
 
-  return CETAudit;
-});
+  function render(resultObj) {
+    out.classList.add("show");
+    $("#headline").textContent = resultObj.metrics.headline;
+    $("#rho").textContent = `ρ (density): ${(resultObj.metrics.rho*100).toFixed(2)}%`;
+    $("#tau").textContent = `τ: ${resultObj.metrics.tau ?? "time-series required"}`;
+    $("#var").textContent = `σ²: ${resultObj.metrics.variance ?? "time-series required"}`;
+    $("#tier").textContent = `Tier: ${resultObj.metrics.tier}`;
+    $("#json").textContent = JSON.stringify(schema(resultObj), null, 2);
+  }
+
+  runBtn.addEventListener("click", () => {
+    // daily free gate
+    if (!canRunFree()) {
+      status.textContent = "Free run used. Use paid link for more.";
+      out.classList.add("show");
+      return;
+    }
+
+    const platform = $("#plat").value.trim();
+    const range = $("#range").value.trim();
+    const impr = Number(($("#impr").value || "").replace(/,/g,""));
+    const eng = Number(($("#eng").value || "").replace(/,/g,""));
+    const notes = $("#notes").value.trim();
+
+    if (!platform || !range || !Number.isFinite(impr) || !Number.isFinite(eng)) {
+      status.textContent = "Missing fields: platform, range, impressions, engagements.";
+      return;
+    }
+
+    status.textContent = "Running…";
+    const metrics = computeSnapshot(impr, eng);
+
+    const resultObj = {
+      platform,
+      range,
+      snapshot: { impressions: impr, engagements: eng },
+      notes,
+      metrics
+    };
+
+    render(resultObj);
+    markRan();
+    free.textContent = "Free run used today";
+    status.textContent = "Complete";
+  });
+})();
