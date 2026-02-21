@@ -1,227 +1,341 @@
-/* CET AUDIT — Creationist Entanglement Theory (CET)
-   Structural Performance Intelligence (SPI)
-   Prototype interpretive layer (non-diagnostic). */
+/* CET Audit Overlay v1 (safe mount: never clears page)
+   Creationist Entanglement Theory (CET) — Structural Performance Intelligence
+*/
 (() => {
-  if (window.__CET_AUDIT_LOADED__) return;
-  window.__CET_AUDIT_LOADED__ = true;
+  const DAY = () => new Date().toISOString().slice(0, 10);
+  const KEY = "cet_free_run_day_v1";
+  const usedToday = () => localStorage.getItem(KEY) === DAY();
+  const markUsed = () => localStorage.setItem(KEY, DAY());
 
-  const VERSION = "0.3.0";
-  const $ = (s, r = document) => r.querySelector(s);
-
-  // ---------- Free limit: 1 per day ----------
-  const dayKey = "cet_free_" + new Date().toISOString().slice(0, 10);
-  const usedToday = () => localStorage.getItem(dayKey) === "1";
-  const markUsed = () => localStorage.setItem(dayKey, "1");
-
-  // ---------- Styles ----------
-  const style = document.createElement("style");
-  style.textContent = `
-#cet-root{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:9999999;pointer-events:none}
-#cet-card{pointer-events:auto;width:min(820px,92vw);background:rgba(10,18,30,.92);border:1px solid rgba(255,255,255,.08);
-  border-radius:22px;box-shadow:0 24px 80px rgba(0,0,0,.55);padding:26px;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
-#cet-kicker{letter-spacing:.14em;font-size:12px;opacity:.8}
-#cet-h1{font-size:38px;line-height:1.05;margin:10px 0 8px}
-#cet-sub{opacity:.85;font-size:14px;margin:0 0 14px;max-width:70ch}
-#cet-in{width:100%;min-height:120px;border-radius:14px;border:1px solid rgba(255,255,255,.12);
-  background:rgba(0,0,0,.35);color:#fff;padding:14px;font-size:14px;outline:none}
-#cet-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:center}
-#cet-go{padding:12px 16px;border-radius:12px;border:0;background:#2f7ef7;color:#fff;font-weight:650;cursor:pointer}
-#cet-go[disabled]{opacity:.5;cursor:not-allowed}
-#cet-note{font-size:12px;opacity:.85}
-#cet-out{margin-top:14px;display:none;border-radius:14px;border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.35);padding:14px;white-space:pre-wrap;font-size:12.5px;line-height:1.4}
-#cet-mini{margin-top:10px;font-size:12px;opacity:.75}
-#cet-x{position:absolute;top:14px;right:14px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.25);
-  color:#fff;border-radius:12px;padding:8px 10px;cursor:pointer}
-`;
-  document.head.appendChild(style);
-
-  // ---------- UI ----------
-  const root = document.createElement("div");
-  root.id = "cet-root";
-  root.innerHTML = `
-    <div id="cet-card">
-      <button id="cet-x" aria-label="Close">✕</button>
-      <div id="cet-kicker">CREATIONIST ENTANGLEMENT THEORY (CET)</div>
-      <div id="cet-h1">Structural Performance Intelligence</div>
-      <p id="cet-sub">
-        Tell us what you’re analyzing in plain English + simple stats.
-        Example: “Platform: Instagram. Views: 46.7k/mo. Followers: 18k. Engagement: 3.2%.
-        Team: solo. Budget: $500/mo. Goal: book 5 brand deals in 90 days.”
-      </p>
-
-      <textarea id="cet-in" placeholder="Paste your stats or description here (no math required)…"></textarea>
-
-      <div id="cet-row">
-        <button id="cet-go">Run Free CET Audit</button>
-        <div id="cet-note"></div>
-      </div>
-
-      <pre id="cet-out"></pre>
-      <div id="cet-mini">Prototype interpretive layer • Non-diagnostic • Version ${VERSION}</div>
-    </div>
-  `;
-  document.body.appendChild(root);
-
-  // Close (nice for UX; optional)
-  $("#cet-x").onclick = () => (root.style.display = "none");
-
-  // ---------- Parsing helpers ----------
-  const num = (re, t) => {
-    const m = t.match(re);
-    if (!m) return null;
-    const v = parseFloat(String(m[1]).replace(/,/g, ""));
-    return Number.isFinite(v) ? v : null;
+  const clamp = (n, a=0, b=100) => Math.max(a, Math.min(b, n));
+  const num = (v) => {
+    const n = Number(String(v).replace(/[^0-9.]/g, ""));
+    return Number.isFinite(n) ? n : 0;
   };
 
+  // Parse either structured key=val pairs or plain text with numbers.
   function parseInput(raw) {
-    const t = raw.toLowerCase();
+    const text = (raw || "").trim();
+    const kv = {};
+    text.split(/[\n,]+/).forEach(part => {
+      const m = part.match(/^\s*([a-zA-Z_ -]+)\s*[:=]\s*([^\n]+)\s*$/);
+      if (m) kv[m[1].trim().toLowerCase()] = m[2].trim();
+    });
 
-    const platform =
-      (t.match(/\b(instagram|tiktok|youtube|x|twitter|threads|facebook|substack|medium|website)\b/) || [])[1] || null;
+    // Friendly aliases
+    const platform = (kv.platform || kv.network || "").toLowerCase() || "";
+    const views = num(kv.views || kv.impressions || kv.reach || kv.plays);
+    const engagements = num(kv.engagements || kv.likes || 0) + num(kv.comments || 0) + num(kv.shares || 0) + num(kv.saves || 0);
+    const followers = num(kv.followers || kv.subscribers || kv.audience);
+    const postsPerWeek = num(kv["posts/week"] || kv.posts || kv.frequency);
+    const revenue = num(kv.revenue || kv.sales || kv.mrr);
 
-    const viewsMonthly =
-      num(/\bviews?\s*[:=]?\s*([\d,.]+)\s*(k|m)?\s*\/?\s*(mo|month|monthly)\b/i, raw) ??
-      (() => {
-        const v = num(/\b([\d,.]+)\s*(k|m)?\s*(monthly|per month)\s*views?\b/i, raw);
-        return v;
-      })();
-
-    const followers = num(/\bfollowers?\s*[:=]?\s*([\d,.]+)\s*(k|m)?\b/i, raw);
-    const engagement = num(/\bengagement\s*[:=]?\s*([\d.]+)\s*%/i, raw);
-    const revenue = num(/\b(revenue|mrr|arr)\s*[:=]?\s*\$?\s*([\d,.]+)\b/i, raw) ?? null;
-    const budget = num(/\bbudget\s*[:=]?\s*\$?\s*([\d,.]+)\b/i, raw) ?? null;
-    const team =
-      num(/\bteam\s*[:=]?\s*([\d,.]+)\b/i, raw) ??
-      (/\bsolo\b/.test(t) ? 1 : null);
-
-    // Normalize suffix (k/m) for the “viewsMonthly” + “followers” cases when user writes 46k
-    function applySuffix(value, text, label) {
-      if (value == null) return null;
-      const rx = new RegExp(label + "\\s*[:=]?\\s*([\\d,.]+)\\s*(k|m)\\b", "i");
-      const m = raw.match(rx);
-      const s = m && m[2] ? m[2].toLowerCase() : null;
-      if (s === "k") return value * 1000;
-      if (s === "m") return value * 1000000;
-      return value;
-    }
+    // If no kv, try to infer common metrics from text numbers (best-effort)
+    const numbers = (text.match(/[0-9][0-9,]*\.?[0-9]*/g) || []).map(s => num(s));
+    const guessViews = views || (numbers[0] || 0);
+    const guessFollowers = followers || (numbers[1] || 0);
 
     return {
-      platform,
-      views_monthly: applySuffix(viewsMonthly, raw, "views?") ?? viewsMonthly,
-      followers: applySuffix(followers, raw, "followers?") ?? followers,
-      engagement_pct: engagement,
-      budget_usd_mo: budget,
-      team_size: team,
-      revenue_usd: revenue,
-      raw_summary: raw.slice(0, 6000)
+      platform: platform || "unspecified",
+      timeframe: (kv.timeframe || kv.period || "last 30 days").toLowerCase(),
+      views: guessViews,
+      engagements,
+      followers: guessFollowers,
+      postsPerWeek,
+      revenue,
+      notes: kv.notes || kv.context || ""
     };
   }
 
-  // ---------- CET variables (first 5 “official” variables) ----------
-  // 1) Coherence (clarity of goal/system)
-  // 2) Constraint (resource pressure)
-  // 3) Adaptability (iteration capacity)
-  // 4) Entanglement (network/partners/dependencies)
-  // 5) Emergence (momentum & scale signals)
-  function scoreCET(raw, p) {
-    const t = raw.toLowerCase();
-
-    const hasGoal = /\b(goal|target|kpi|objective|north star|launch|deadline|90 days|30 days|q[1-4])\b/.test(t);
-    const hasSystem = /\b(funnel|workflow|process|cadence|plan|strategy)\b/.test(t);
-    const coherence = Math.min(100, (hasGoal ? 55 : 20) + (hasSystem ? 35 : 10));
-
-    const lowBudget = p.budget_usd_mo != null && p.budget_usd_mo <= 1000;
-    const solo = p.team_size === 1 || /\bsolo\b/.test(t);
-    const constraint = Math.min(100, 30 + (lowBudget ? 35 : 10) + (solo ? 25 : 10) + (/\b(limited|tight|constraint|delays?)\b/.test(t) ? 20 : 5));
-
-    const iter = /\b(iterate|test|experiment|a\/b|weekly|daily|sprint)\b/.test(t);
-    const adapt = /\b(pivot|change|learn|ship|improve)\b/.test(t);
-    const adaptability = Math.min(100, (iter ? 55 : 20) + (adapt ? 35 : 15));
-
-    const net = /\b(partner|collab|press|pr|network|referral|affiliate|vendor|client|pipeline)\b/.test(t);
-    const platform = p.platform ? 15 : 0;
-    const entanglement = Math.min(100, 25 + (net ? 55 : 15) + platform);
-
-    const views = p.views_monthly || 0;
-    const foll = p.followers || 0;
-    const eng = p.engagement_pct || 0;
-    // Simple “momentum” proxy (investor-friendly, not “mathy”)
-    const emergence = Math.min(
-      100,
-      15 +
-        (views >= 50000 ? 35 : views >= 10000 ? 25 : views > 0 ? 15 : 0) +
-        (foll >= 20000 ? 25 : foll >= 5000 ? 15 : foll > 0 ? 10 : 0) +
-        (eng >= 4 ? 20 : eng >= 2 ? 12 : eng > 0 ? 6 : 0) +
-        (/\b(growth|scale|expand|waitlist|revenue)\b/.test(t) ? 10 : 0)
+  // CET variables (first 5 "official" audit variables) — scored 0–100
+  function scoreCET(m) {
+    // Coherence: consistent signals & ratio sanity
+    const er = m.views ? (m.engagements / m.views) : 0; // engagement rate
+    const coherence = clamp(
+      (m.followers ? 25 : 0) +
+      (m.views ? 25 : 0) +
+      (m.engagements ? 25 : 0) +
+      (er > 0 && er < 0.2 ? 25 : er >= 0.2 ? 15 : 5)
     );
 
-    const SPI = (coherence + constraint + adaptability + entanglement + emergence) / 5;
+    // Constraint: bottlenecks / low capacity (low posting cadence or low resources proxy)
+    const constraint = clamp(
+      60 - clamp(m.postsPerWeek * 10, 0, 50) + (m.revenue > 0 ? -10 : 10)
+    );
 
-    const band = SPI >= 75 ? "High readiness" : SPI >= 50 ? "Moderate stability" : "Needs redesign";
-    const findings = [];
-    if (coherence < 60) findings.push("Clarify the goal + timeline (what success looks like, by when).");
-    if (constraint > 70) findings.push("Resource pressure is high — simplify scope or add leverage (partners/automation).");
-    if (adaptability < 60) findings.push("Increase iteration cadence (weekly experiments + measurement).");
-    if (entanglement < 55) findings.push("Add distribution ties (press, affiliates, collabs, partnerships).");
-    if (emergence < 55) findings.push("Strengthen traction signals (consistent content cadence + conversion path).");
+    // Adaptability: iteration frequency proxy (posts/week) + engagement responsiveness proxy
+    const adaptability = clamp(
+      clamp(m.postsPerWeek * 12, 0, 70) + clamp(er * 200, 0, 30)
+    );
 
-    const nextSteps = [
-      "Write 1 measurable 30–90 day goal (number + date).",
-      "List your top 3 constraints (time, budget, access) and one mitigation each.",
-      "Choose one growth lever to test this week (collab, PR pitch, paid test, lead magnet)."
+    // Entanglement: platform + audience leverage proxy (followers + views mix)
+    const entanglement = clamp(
+      clamp(Math.log10(m.followers + 1) * 18, 0, 60) + clamp(Math.log10(m.views + 1) * 12, 0, 40)
+    );
+
+    // Emergence: growth potential proxy (views relative to followers + revenue presence)
+    const vf = m.followers ? (m.views / m.followers) : 0;
+    const emergence = clamp(
+      clamp(vf * 25, 0, 70) + (m.revenue > 0 ? 20 : 10)
+    );
+
+    const spi = clamp((coherence + (100 - constraint) + adaptability + entanglement + emergence) / 5);
+
+    const flags = [];
+    if (constraint > 70) flags.push("High constraint: capacity or budget bottleneck likely.");
+    if (coherence < 50) flags.push("Low coherence: metrics/context unclear or inconsistent.");
+    if (adaptability < 40) flags.push("Low adaptability: iterate more frequently (content/tests).");
+    if (entanglement < 40) flags.push("Low entanglement: improve distribution/collabs/SEO.");
+    if (emergence < 50) flags.push("Moderate emergence: clarify growth loop and monetization path.");
+
+    const nextActions = [
+      "Clarify the system: define 1 goal + 3 KPI signals (views, engagement, conversion).",
+      "Reduce constraints: pick one bottleneck (time, budget, creative throughput) and remove it.",
+      "Increase adaptability: commit to a weekly test cadence (1 experiment/week).",
+      "Increase entanglement: add 1 distribution partner/channel (collab, newsletter, SEO, PR).",
+      "Drive emergence: build a repeatable loop (content → capture → offer → retention)."
     ];
 
+    return { coherence, constraint, adaptability, entanglement, emergence, spi, flags, nextActions };
+  }
+
+  // Investor-friendly output schema (feels “scientific”)
+  function buildSchema(m, s) {
     return {
-      model: "Creationist Entanglement Theory (CET) — Structural Performance Intelligence",
-      layer: "CET Audit (interpretive prototype)",
-      version: VERSION,
+      model: "Creationist Entanglement Theory (CET)",
+      layer: "Structural Performance Intelligence",
+      tool: "CET Audit (Beta)",
       timestamp: new Date().toISOString(),
-      variables: { coherence, constraint, adaptability, entanglement, emergence },
-      SPI: Number(SPI.toFixed(1)),
-      band,
-      key_findings: findings.slice(0, 6),
-      recommended_next_steps: nextSteps
+      input: {
+        platform: m.platform,
+        timeframe: m.timeframe,
+        metrics: {
+          views: m.views,
+          engagements: m.engagements,
+          followers: m.followers,
+          posts_per_week: m.postsPerWeek,
+          revenue: m.revenue
+        },
+        notes: m.notes
+      },
+      variables_0_100: {
+        coherence: s.coherence,
+        constraint: s.constraint,
+        adaptability: s.adaptability,
+        entanglement: s.entanglement,
+        emergence: s.emergence
+      },
+      composite: {
+        spi: s.spi, // Structural Performance Intelligence score
+        band: s.spi >= 80 ? "A" : s.spi >= 65 ? "B" : s.spi >= 50 ? "C" : "D"
+      },
+      interpretation: {
+        flags: s.flags,
+        recommended_actions: s.nextActions.slice(0, 3)
+      },
+      disclaimer:
+        "Prototype analytical model for structural interpretation only. Not diagnostic, financial, or predictive advice."
     };
   }
 
-  // ---------- Wiring ----------
-  const btn = $("#cet-go");
-  const note = $("#cet-note");
-  const input = $("#cet-in");
-  const out = $("#cet-out");
+  function mount() {
+    // Prevent double-mount
+    if (document.getElementById("cet-overlay-root")) return;
 
-  function setLockedUI() {
-    btn.disabled = true;
-    note.textContent = "Free audit used today. Upgrade to unlock unlimited audits.";
-  }
+    const root = document.createElement("div");
+    root.id = "cet-overlay-root";
+    root.style.cssText = `
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      z-index: 999999; pointer-events: none;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    `;
 
-  if (usedToday()) setLockedUI();
+    const card = document.createElement("div");
+    card.style.cssText = `
+      width: min(720px, calc(100vw - 28px));
+      background: rgba(12,16,24,0.92);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 18px;
+      box-shadow: 0 18px 60px rgba(0,0,0,0.35);
+      padding: 22px 20px;
+      color: #fff;
+      pointer-events: auto;
+    `;
 
-  btn.onclick = () => {
-    if (usedToday()) return setLockedUI();
+    card.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+        <div>
+          <div style="letter-spacing:.08em;text-transform:uppercase;font-size:12px;opacity:.85;">
+            Creationist Entanglement Theory (CET)
+          </div>
+          <div style="font-size:34px;line-height:1.05;font-weight:800;margin-top:6px;">
+            Structural Performance Intelligence
+          </div>
+          <div style="opacity:.85;margin-top:8px;">
+            Tell us what you want to audit. Paste simple stats — no CET math required.
+          </div>
+        </div>
+        <button id="cet-close" aria-label="Close" style="
+          background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);
+          color:#fff;border-radius:12px;padding:8px 10px;cursor:pointer;
+        ">✕</button>
+      </div>
 
-    const raw = (input.value || "").trim();
-    if (!raw) {
-      note.textContent = "Paste a short description or your basic stats first.";
-      return;
+      <div style="margin-top:14px;display:grid;gap:10px;">
+        <div style="display:grid;gap:8px;">
+          <div style="opacity:.9;font-size:13px;">
+            Paste metrics like:
+            <span style="opacity:.8">platform=instagram, views=106000, likes=3200, comments=210, shares=140, followers=46700, posts/week=3, timeframe=90 days</span>
+            <br/><span style="opacity:.8">or just write: “Instagram last 90 days: 106k views, 46.7k followers, 3.5k total engagements”</span>
+          </div>
+          <textarea id="cet-input" rows="5" style="
+            width:100%; resize:vertical; padding:12px 12px;
+            border-radius:14px; border:1px solid rgba(255,255,255,.12);
+            background:rgba(255,255,255,.06); color:#fff; outline:none;
+          " placeholder="Paste your stats or describe your system…"></textarea>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button id="cet-run" style="
+            background:#2f78ff;border:none;color:#fff;
+            border-radius:14px;padding:12px 16px;font-weight:700;
+            cursor:pointer;
+          ">Run Free CET Audit</button>
+
+          <div id="cet-status" style="opacity:.85;font-size:13px;"></div>
+        </div>
+
+        <div id="cet-result" style="display:none;margin-top:8px;">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <div style="font-size:14px;opacity:.9;">
+              SPI Score: <span id="cet-spi" style="font-weight:800;"></span>
+              <span id="cet-band" style="opacity:.85;margin-left:8px;"></span>
+            </div>
+          </div>
+
+          <div style="margin-top:10px;display:grid;gap:10px;">
+            <div id="cet-flags" style="font-size:13px;opacity:.92;"></div>
+            <div id="cet-actions" style="font-size:13px;opacity:.92;"></div>
+
+            <details style="margin-top:4px;">
+              <summary style="cursor:pointer;opacity:.9;">View scientific output schema (JSON)</summary>
+              <pre id="cet-json" style="
+                margin-top:8px;white-space:pre-wrap;word-break:break-word;
+                background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.10);
+                padding:12px;border-radius:12px;font-size:12px;opacity:.95;
+              "></pre>
+            </details>
+          </div>
+        </div>
+
+        <div id="cet-paywall" style="display:none;margin-top:10px;
+          border-top:1px solid rgba(255,255,255,.10);padding-top:10px;opacity:.95;">
+          <div style="font-weight:700;">Free audit used for today.</div>
+          <div style="opacity:.85;font-size:13px;margin-top:4px;">
+            Upgrade to run unlimited audits, compare platforms, and track improvements over time.
+          </div>
+          <div style="opacity:.8;font-size:12px;margin-top:4px;">
+            (Hook this button to Stripe/checkout later.)
+          </div>
+          <button id="cet-upgrade" style="
+            margin-top:10px;background:rgba(255,255,255,.10);
+            border:1px solid rgba(255,255,255,.16);color:#fff;
+            border-radius:12px;padding:10px 12px;cursor:pointer;
+          ">Upgrade to Unlimited</button>
+        </div>
+
+        <div style="margin-top:10px;opacity:.65;font-size:12px;">
+          Status: prototype analytical model (non-diagnostic; interpretive layer).
+        </div>
+      </div>
+    `;
+
+    root.appendChild(card);
+    document.body.appendChild(root);
+
+    const $ = (id) => card.querySelector(id);
+    const input = $("#cet-input");
+    const runBtn = $("#cet-run");
+    const status = $("#cet-status");
+    const result = $("#cet-result");
+    const spiEl = $("#cet-spi");
+    const bandEl = $("#cet-band");
+    const flagsEl = $("#cet-flags");
+    const actionsEl = $("#cet-actions");
+    const jsonEl = $("#cet-json");
+    const paywall = $("#cet-paywall");
+    const upgrade = $("#cet-upgrade");
+
+    // Close
+    $("#cet-close").onclick = () => root.remove();
+
+    // Paywall gate
+    function gate() {
+      if (usedToday()) {
+        runBtn.disabled = true;
+        runBtn.style.opacity = "0.5";
+        paywall.style.display = "block";
+        status.textContent = "Free run already used today.";
+        return true;
+      }
+      paywall.style.display = "none";
+      return false;
+    }
+    gate();
+
+    upgrade.onclick = () => {
+      alert("Upgrade flow not connected yet. Add Stripe later.");
+    };
+
+    function render(schema) {
+      const spi = schema.composite.spi;
+      spiEl.textContent = `${spi.toFixed(1)}/100`;
+      bandEl.textContent = `Band ${schema.composite.band}`;
+      const flags = schema.interpretation.flags || [];
+      const actions = schema.interpretation.recommended_actions || [];
+      flagsEl.innerHTML = flags.length
+        ? `<b>Flags:</b><br/>• ${flags.join("<br/>• ")}`
+        : `<b>Flags:</b><br/>None detected.`;
+      actionsEl.innerHTML = actions.length
+        ? `<b>Next actions:</b><br/>1) ${actions.join("<br/>2) ").replace("<br/>2)", "<br/>2)")}`
+        : "";
+      jsonEl.textContent = JSON.stringify(schema, null, 2);
+      result.style.display = "block";
     }
 
-    const parsed = parseInput(raw);
-    const report = scoreCET(raw, parsed);
+    function run() {
+      try {
+        status.textContent = "";
+        if (gate()) return;
 
-    // Output schema (scientific-feeling + investor-readable)
-    const output = {
-      report_id: "CET-" + Math.random().toString(16).slice(2, 10).toUpperCase(),
-      ...report,
-      parsed_inputs: parsed,
-      paywall: { free_runs_per_day: 1, used_today: true, upgrade_required_for_more: true }
-    };
+        const metrics = parseInput(input.value);
+        const scores = scoreCET(metrics);
+        const schema = buildSchema(metrics, scores);
 
-    out.style.display = "block";
-    out.textContent = JSON.stringify(output, null, 2);
+        render(schema);
+        markUsed();
+        gate();
+        status.textContent = "Complete.";
+      } catch (e) {
+        status.textContent = "Error: " + (e && e.message ? e.message : "unknown");
+      }
+    }
 
-    markUsed();
-    setLockedUI();
-  };
+    runBtn.onclick = run;
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) run();
+    });
+
+    // Helpful default example (so it looks alive)
+    if (!input.value.trim()) {
+      input.value = "platform=instagram, timeframe=90 days, views=106000, followers=46700, likes=2800, comments=210, shares=140, posts/week=3";
+    }
+  }
+
+  // Mount when DOM is ready (safe for Framer)
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", mount);
+  } else {
+    mount();
+  }
 })();
