@@ -15,9 +15,9 @@
     }
     // Most reliable on mobile + inside builders:
     try {
-      window.top.location.href = STRIPE_URL;
+      window.top.location.href="${STRIPE_URL}";
     } catch (_) {
-      window.location.href = STRIPE_URL;
+      window.location.href="${STRIPE_URL}";
     }
   }
 
