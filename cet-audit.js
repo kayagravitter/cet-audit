@@ -4,7 +4,15 @@
 if (window.CET_LOADED) return;
 window.CET_LOADED = true;
 
-function start() {
+(function () {
+
+function bootWhenReady(fn){
+  if(document.readyState==="complete"){
+    setTimeout(fn,400);
+  } else {
+    window.addEventListener("load",()=>setTimeout(fn,400));
+  }
+}
 
   const box = document.createElement("div");
   box.style.position="fixed";
