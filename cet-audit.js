@@ -77,7 +77,7 @@ goal: brand deals"
     };
 
     // Stripe upgrade: use redirect, not window.open
-    <a href="https://buy.stripe.com/YOUR_STRIPE_LINK"
+    <a href="https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00"
    target="_top"
    style="
      display:block;
