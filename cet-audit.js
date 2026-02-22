@@ -77,20 +77,12 @@ goal: brand deals"
     };
 
     // Stripe upgrade: use redirect, not window.open
-    <a href="https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00"
+    <a id="cetUpgradeLink"
+   href="${STRIPE_URL}"
    target="_top"
-   style="
-     display:block;
-     text-align:center;
-     margin-top:10px;
-     padding:9px;
-     background:#111827;
-     color:white;
-     border-radius:8px;
-     text-decoration:none;
-     border:1px solid rgba(255,255,255,.18);
-   ">
-   Upgrade (Unlimited Audits)
+   rel="noopener noreferrer"
+   style="color:#60a5fa;text-decoration:underline;">
+  Upgrade for unlimited
 </a>
     document.getElementById("cetUpgradeLink").addEventListener("click", goToStripe);
   }
