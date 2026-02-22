@@ -6,7 +6,7 @@ window.CET_LOADED = true;
 
 (function () {
 
-function bootWhenReady(fn){
+function bootWhenReady(start);{
   if(document.readyState==="complete"){
     setTimeout(fn,400);
   } else {
