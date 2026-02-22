@@ -3,9 +3,7 @@
   if (window.CET_LOADED) return;
   window.CET_LOADED = true;
 
-  const STRIPE_URL = "https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00"; // <-- paste yours
-
-  function bootWhenReady(fn) {
+  const STRIPE_URL = "https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00"; // function bootWhenReady(fn) {
     if (document.readyState === "complete") setTimeout(fn, 400);
     else window.addEventListener("load", () => setTimeout(fn, 400));
   }
