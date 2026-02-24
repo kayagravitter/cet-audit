@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>CET Audit</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <main class="wrap">
+    <header class="hdr">
+      <div class="kicker">Creationist Entanglement Theory (CET)</div>
+      <h1>Structural Performance Intelligence</h1>
+      <p class="sub">
+        Paste your public stats in plain English. No formulas. No CET math.
+      </p>
+    </header>
+
+    <section class="card">
+      <label class="lbl" for="in">Your stats</label>
+      <textarea id="in" rows="10" placeholder="Example:
+Platform: LinkedIn
+Followers: 339
+Impressions (14d): 1195
+Engagements (14d): 30
+Goal: partnerships"></textarea>
+
+      <div class="row">
+        <button id="run" class="btn">Run CET audit</button>
+        <button id="clear" class="btn ghost" type="button">Clear</button>
+        <div class="meta"><span id="count">0</span> chars</div>
+      </div>
+
+      <div id="out" class="out" aria-live="polite"></div>
+
+      <div class="pay">
+        <div class="paycopy">
+          <strong>Used your free audit?</strong>
+          <div class="muted">Upgrade for unlimited audits.</div>
+        </div>
+        <a id="upgrade" class="btn" href="#" target="_blank" rel="noopener">Upgrade</a>
+      </div>
+    </section>
+
+    <footer class="ftr">© CET Audit</footer>
+  </main>
+
+  <script src="./cet-audit.js"></script>
+</body>
+</html>
