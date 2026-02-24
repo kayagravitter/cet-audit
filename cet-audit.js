@@ -1,91 +1,99 @@
-// CET AUDIT — CLEAN BOOT + STRIPE UPGRADE (no engagement rate)
-(function () {
-  if (window.CET_LOADED) return;
-  window.CET_LOADED = true;
+(() => {
+  const STRIPE_URL = "PASTE_YOUR_STRIPE_LINK_HERE"; // e.g. https://buy.stripe.com/xxxx
 
-  const STRIPE_URL = "https://buy.stripe.com/5kQdR8eHT6iy3Uy4q42Fa00"; // function bootWhenReady(fn) {
-    if (document.readyState === "complete") setTimeout(fn, 400);
-    else window.addEventListener("load", () => setTimeout(fn, 400));
-  }
+  const $ = (id) => document.getElementById(id);
+  const input = $("in"), out = $("out"), run = $("run"), clear = $("clear"), count = $("count");
+  $("upgrade").href = STRIPE_URL;
 
-  function goToStripe(e) {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
+  const num = (s) => {
+    if (!s) return null;
+    const m = String(s).toLowerCase().replace(/,/g,"").match(/(\d+(\.\d+)?)(\s*[kmb])?/);
+    if (!m) return null;
+    let n = parseFloat(m[1]);
+    const u = (m[3] || "").trim();
+    if (u==="k") n*=1e3; else if (u==="m") n*=1e6; else if (u==="b") n*=1e9;
+    return isFinite(n) ? n : null;
+  };
+
+  const pick = (t, keys) => {
+    const lines = t.split(/\n+/).map(l => l.trim()).filter(Boolean);
+    for (const l of lines) {
+      const low = l.toLowerCase();
+      if (keys.some(k => low.includes(k))) {
+        const after = l.split(/[:=-]/).slice(1).join(":").trim();
+        const v = num(after) ?? num(l);
+        if (v !== null) return v;
+      }
     }
-    // Most reliable on mobile + inside builders:
-    try {
-      window.top.location.href="${STRIPE_URL}";
-    } catch (_) {
-      window.location.href="${STRIPE_URL}";
+    return null;
+  };
+
+  const pickText = (t, keys) => {
+    const lines = t.split(/\n+/).map(l=>l.trim()).filter(Boolean);
+    for (const l of lines) {
+      const low = l.toLowerCase();
+      if (keys.some(k=>low.startsWith(k) || low.includes(k))) {
+        const after = l.split(/[:=-]/).slice(1).join(":").trim();
+        return after || l;
+      }
     }
-  }
+    return "";
+  };
 
-  function start() {
-    const box = document.createElement("div");
-    box.style.position = "fixed";
-    box.style.bottom = "20px";
-    box.style.right = "20px";
-    box.style.padding = "16px 20px";
-    box.style.background = "#0b1620";
-    box.style.color = "#fff";
-    box.style.fontFamily = "sans-serif";
-    box.style.borderRadius = "12px";
-    box.style.zIndex = "999999";
-    box.style.boxShadow = "0 10px 30px rgba(0,0,0,.4)";
-    box.style.width = "280px";
+  const scoreIt = (followers, impressions14, engagements14) => {
+    // Friendly, simple, explainable scoring (0–100)
+    let s = 10;
 
-    box.innerHTML = `
-      <b>CET Audit</b><br>
-      Paste stats (plain English):<br><br>
+    if (followers) s += Math.min(35, Math.log10(followers + 1) * 12);
+    if (impressions14) s += Math.min(35, Math.log10(impressions14 + 1) * 12);
+    if (engagements14) s += Math.min(20, Math.log10(engagements14 + 1) * 8);
 
-      <textarea id="cetInput"
-        placeholder="platform: instagram
-monthly_views: 99000
-followers: 12400
-goal: brand deals"
-        style="width:100%;height:110px;margin-top:6px;"></textarea>
+    return Math.max(0, Math.min(100, Math.round(s)));
+  };
 
-      <button id="cetRun"
-        style="margin-top:10px;width:100%;padding:9px;background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer;">
-        Run free audit
-      </button>
+  const fmt = (n) => n == null ? "—" : n.toLocaleString();
 
-      <div id="cetResult" style="margin-top:10px;opacity:.95;"></div>
+  const render = () => {
+    const t = input.value || "";
+    count.textContent = String(t.length);
 
-      <div style="margin-top:10px;font-size:12px;opacity:.9;">
-        Free audit used today.
-        <a id="cetUpgradeLink" href="${STRIPE_URL}" style="color:#93c5fd;text-decoration:underline;">
-          Upgrade for unlimited
-        </a>
-      </div>
+    if (!t.trim()) {
+      out.textContent = "Paste stats to generate your CET audit.";
+      return;
+    }
 
-      <button id="cetUpgradeBtn"
-        style="margin-top:10px;width:100%;padding:9px;background:#111827;color:white;border:1px solid rgba(255,255,255,.18);border-radius:8px;cursor:pointer;">
-        Upgrade (Stripe)
-      </button>
-    `;
+    const platform = pickText(t, ["platform", "channel"]) || "—";
+    const followers = pick(t, ["followers", "subs", "subscribers", "audience"]);
+    const impressions14 = pick(t, ["impressions", "reach", "views (14", "views 14", "14d impressions", "14 day impressions"]);
+    const engagements14 = pick(t, ["engagements", "reactions", "comments", "shares", "saves"]);
+    const goal = pickText(t, ["goal", "objective", "want", "seeking"]) || "—";
 
-    document.body.appendChild(box);
+    const score = scoreIt(followers, impressions14, engagements14);
 
-    // Run button (simple demo scoring; no engagement rate)
-    document.getElementById("cetRun").onclick = () => {
-      const text = document.getElementById("cetInput").value || "";
-      const score = Math.min(100, (text.length * 3) % 100);
-      document.getElementById("cetResult").innerHTML =
-        `SPI Score: <b>${score}</b><br><span style="font-size:12px;opacity:.9;">(No engagement rate needed.)</span>`;
-    };
+    const next =
+      score >= 80 ? "You’re ready for bigger partners. Package this into a 1-page media kit + pinned post cadence." :
+      score >= 60 ? "Solid traction. Tighten your positioning + post 2x/week with 1 clear CTA." :
+      score >= 40 ? "Early signal. Focus on consistency + one niche conversation thread." :
+                    "Seed phase. Clarify your offer + run a small cohort/beta with testimonials.";
 
-    // Stripe upgrade: use redirect, not window.open
-    <a id="cetUpgradeLink"
-   href="${STRIPE_URL}"
-   target="_top"
-   rel="noopener noreferrer"
-   style="color:#60a5fa;text-decoration:underline;">
-  Upgrade for unlimited
-</a>
-    document.getElementById("cetUpgradeLink").addEventListener("click", goToStripe);
-  }
+    out.textContent =
+`CET Score: ${score}/100
 
-  bootWhenReady(start);
+Platform: ${platform}
+Followers: ${fmt(followers)}
+Impressions (14d): ${fmt(impressions14)}
+Engagements (14d): ${fmt(engagements14)}
+Goal: ${goal}
+
+Next move: ${next}`;
+  };
+
+  input.addEventListener("input", render);
+  run.addEventListener("click", render);
+  clear.addEventListener("click", () => { input.value=""; render(); });
+
+  // remember last input
+  input.value = localStorage.getItem("cet_audit_text") || input.value;
+  input.addEventListener("input", () => localStorage.setItem("cet_audit_text", input.value));
+  render();
 })();
